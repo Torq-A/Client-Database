@@ -1,0 +1,550 @@
+
+#include <iostream>
+#include <string>
+#include <fstream>                    // ifstream, ofstream
+#include <cassert>                    // assert()
+using namespace std;
+
+class BST_Node  //node in a BST
+{
+public:
+	string lastname, firstname, address, phone_number;
+	BST_Node  *lchild, *rchild;   //left and right children pointers
+};
+
+class Clients_Info_BST //Binary Search Tree
+{
+public:
+	Clients_Info_BST();//store the data in the hash table
+	Clients_Info_BST(const Clients_Info_BST &);//Copy Constructor
+	void CopyHelper(BST_Node * Tree1, BST_Node * &Tree2);
+	~Clients_Info_BST();//Destructor           
+	void Insert(const string & s);
+	void Insert_aux(BST_Node * & loc_ptr, const string & s);
+	void Remove(const string & s);
+	void Remove_aux(BST_Node * & loc_ptr, const string & s);
+	BST_Node * inorder_succ(BST_Node * loc_ptr);
+	bool empty(){ return (root == 0); };
+	void Update(string s);
+	void Print( );
+	void print_tree_aux(BST_Node * loc_ptr);
+	BST_Node * Search(const string & s);
+	BST_Node * search_tree_aux(BST_Node * loc_ptr, string s);
+	BST_Node * getroot(){ return root; };
+	void PrintToFile(ofstream & a_file);
+	void PrintToFileIteratively(BST_Node *loc_ptr, ofstream & a_file);
+	//other member functions you may need.
+private:
+	BST_Node *root; //---state information
+};
+
+//default constructor
+//preconditiion: BST doesn't exist
+//postcondition: BST created with default root = 0
+Clients_Info_BST::Clients_Info_BST()
+{
+	BST_Node *root = 0;
+}
+
+//copy constructor
+//preconditiion: BST A exists
+//postcondition: BST B is created using all elements from BST A
+Clients_Info_BST::Clients_Info_BST(const Clients_Info_BST &target)
+{
+	// Call tree copy function
+	CopyHelper(target.root, root);
+}
+
+//iterative portion of copt constructor
+//preconditiion: Given two nodes, A and B
+//postcondition: All info in A is copied to B, and the process is done iteratively to their children
+void Clients_Info_BST::CopyHelper(BST_Node * Tree1, BST_Node * &Tree2)
+{
+	// Check terminating condition
+	if (Tree1 == NULL)
+		Tree2 = NULL;
+
+	// Copy node and it's children
+	else
+	{
+		Tree2 = new BST_Node;
+		Tree2->firstname = Tree1->firstname;
+		Tree2->lastname = Tree1->lastname;
+		Tree2->address = Tree1->address;
+		Tree2->phone_number = Tree1->phone_number;
+		CopyHelper(Tree1->lchild, Tree2->lchild);
+		CopyHelper(Tree1->rchild, Tree2->rchild);
+	}
+}
+
+//insert function
+void Clients_Info_BST::Insert(const string & s)
+{
+		Insert_aux(root, s);
+}
+
+//iterative insert function
+//preconditiion: Node A exists and we want to insert string s
+//postcondition: We see if s has any children. If it doesn't, we insert it as a child to the node. 
+//If not, we do the insert function iteratively to the node's children.
+void Clients_Info_BST::Insert_aux(BST_Node * & loc_ptr, const string & s)
+{
+	int x = s.find(" ");
+	string lastname = s.substr(0, x);
+	int y = s.find(" ", x+1);
+	string firstname = s.substr(x + 1, y - (x + 1));
+	string phone_number = s.substr((s.length() - 8), 8);
+	string address = s.substr(y + 1, (s.length() - 9 - (y + 1)));
+	if (loc_ptr == 0)
+	{
+		loc_ptr = new BST_Node;
+		loc_ptr->lchild = loc_ptr->rchild = 0;
+		loc_ptr->firstname = firstname;
+		loc_ptr->lastname = lastname;
+		loc_ptr->address = address;
+		loc_ptr->phone_number = phone_number;
+		cout << firstname << " " << lastname << " inserted into system" << endl;
+	}
+	else if (((loc_ptr->lastname) + (loc_ptr->firstname))>(lastname+firstname))
+		Insert_aux(loc_ptr->lchild, s);
+	else if (((loc_ptr->lastname) + (loc_ptr->firstname))<(lastname + firstname))
+		Insert_aux(loc_ptr->rchild, s);
+	else
+		cout << "the item is already in the tree\n";
+}
+
+//Destructor
+//preconditiion: BST A exists
+//postcondition: All entries are removed from it (i.e. the "pulling from the roots" method)
+Clients_Info_BST::~Clients_Info_BST()
+{
+	while (!empty())
+	{
+		string f = root->firstname;
+		string l = root->lastname;
+		Remove(l + " " + f);
+	}
+}
+
+//Remove function
+void Clients_Info_BST::Remove(const string & s)
+{
+		Remove_aux(root, s);
+}
+
+//iterative Remove function
+//preconditiion: Given a node A and a string s
+//postcondition: Checks to find if s is in the node or any of its children, and removes it if so
+void Clients_Info_BST::Remove_aux(BST_Node * & loc_ptr, const string & s)
+{
+	int x = s.find(" ");
+	string lastname = s.substr(0, x);
+	int y = s.find(" ", x + 1);
+	string firstname = s.substr(x + 1, y - (x + 1));
+	if (loc_ptr == 0)
+		cout << "item not in tree\n";
+	else if (((loc_ptr->lastname) + (loc_ptr->firstname))>(lastname + firstname))
+		Remove_aux(loc_ptr->lchild, s);
+
+	else if (((loc_ptr->lastname) + (loc_ptr->firstname))<(lastname + firstname))
+		Remove_aux(loc_ptr->rchild, s);
+
+	else
+	{
+		BST_Node * ptr;
+
+		if (loc_ptr->lchild == 0)
+		{
+			ptr = loc_ptr->rchild;
+			delete loc_ptr;
+			loc_ptr = ptr;
+			cout << firstname << " " << lastname << " removed from system" << endl;
+		}
+		else if (loc_ptr->rchild == 0)
+		{
+			ptr = loc_ptr->lchild;
+			delete loc_ptr;
+			loc_ptr = ptr;
+			cout << firstname << " " << lastname << " removed from system" << endl;
+		}
+		else
+		{
+			ptr = inorder_succ(loc_ptr);
+			loc_ptr->firstname = ptr->firstname;
+			loc_ptr->lastname = ptr->lastname;
+			loc_ptr->address = ptr->address;
+			loc_ptr->phone_number = ptr->phone_number;
+			Remove_aux(loc_ptr->rchild, s);
+			cout << firstname << " " << lastname << " removed from system" << endl;
+		}
+	}
+
+}
+
+//finds leftmost child of node in order to complete remove function
+//preconditiion: N/A
+//postcondition: Finds leftmost child of node to use when a node with 2 children is removed
+BST_Node * Clients_Info_BST::inorder_succ(BST_Node * loc_ptr)
+{
+
+	BST_Node *ptr = loc_ptr->rchild;
+
+	while (ptr->lchild != 0)
+	{
+		ptr = ptr->lchild;
+	}
+	return ptr;
+}
+
+//search function
+BST_Node * Clients_Info_BST::Search(const string &s)
+{
+	return search_tree_aux(root, s);
+}
+
+//iterative search function: assumes search string s is "lastname firstname"
+//preconditiion: Given a node A and a string s
+//postcondition: Finds if the node or any of its children have s, and then returns it
+BST_Node * Clients_Info_BST::search_tree_aux(BST_Node * loc_ptr, string s)
+{
+	int x = s.find(" ");
+	string lastname = s.substr(0, x);
+	int y = s.find(" ", x + 1);
+	string firstname = s.substr(x + 1, y - (x + 1));
+	if (loc_ptr != 0)
+	{
+		if (((loc_ptr->lastname) + (loc_ptr->firstname)) == (lastname + firstname))
+			return loc_ptr;
+		else if (((loc_ptr->lastname) + (loc_ptr->firstname))>(lastname + firstname))
+			return search_tree_aux(loc_ptr->lchild, s);
+		else
+			return search_tree_aux(loc_ptr->rchild, s);
+	}
+	else
+		return loc_ptr;
+}
+
+//update function
+//precondition: Given a preexisting node A and a string s
+//postcondition: Using the notes below, the function takes whichever node corresponds to s and updates it
+void Clients_Info_BST::Update(string s)
+{
+	/*******************************************************************************
+	Notes for Update Function:
+	1.  My_Book_Update(“1 James Clark Lofton Bullard 777 Glades Run 527-6623”);
+	If first character is a 1, this means all three fields will be changed.
+	2.   My_Book_Update(“2 James Clark Lofton Bullard 777 Glades Run”);
+	If first character is a 2, this means the Name and Address fields will be changed.
+	3.   My_Book_Update(“3 James Clark 777 Glades Run 555-6666”);
+	If first character is a 3, this means the Address and Phone Number fields will be changed.
+	4.   My_Book_Update(“4 James Clark Lofton Bullard 555-6666”);
+	If first character is a 4, this means the Name and Phone Number fields will be changed.
+	5.   My_Book_Update(“5 James Clark Lofton Bullard”);
+	If first character is a 5, this means the Name field will be changed.
+	6.   My_Book_Update(“6 James Clark 777 Glades Run”);
+	If first character is a 6, this means the Address field will be changed.
+	7.   My_Book_Update(“7 James Clark 555-6666”);
+	If first character is a 7, this means the Phone Number field will be changed.
+	********************************************************************************/
+	char option = s[0];
+	int x = s.find(" ", 2);
+	string lastname = s.substr(2, x);
+	int y = s.find(" ", x + 1);
+	string firstname = s.substr(x + 1, y - (x + 1));
+	//option 1: All three fields are changed
+	if ((option == char("1")))
+	{
+		string phone_number = s.substr((s.length() - 8), 8);
+		int z = s.find(" ", y + 1);
+		string newfirst = s.substr(y + 1, z - (y + 1));
+		int w = s.find(" ", z - y);
+		string newlast = s.substr(z - y, w - (z - y));
+		string address = s.substr(w - (z - y) + 1, (s.length() - 9 - (w - (z - y) + 1)));
+		//BST_Node *target = Search(lastname + " " + firstname);
+		Remove(lastname + " " + firstname);
+		Insert(newlast + " " + newfirst + " " + address + " " + phone_number);
+		cout << "Update: " << firstname << " " << lastname << "'s new name is now " << firstname << " " << lastname << endl;
+		cout << "Update: " << newfirst << " " << newlast << "'s new address is now " << address << endl;
+		cout << "Update: " << newfirst << " " << newlast << "'s new phone number is now " << phone_number << endl;
+	}
+	//option 2: Name and address fields changed
+	else if (option == char("2"))
+	{
+		int z = s.find(" ", y + 1);
+		string newfirst = s.substr(y + 1, z - (y + 1));
+		int w = s.find(" ", z - y);
+		string newlast = s.substr(z - y, w - (z - y));
+		string address = s.substr(w - (z - y) + 1, (s.length() - (w - (z - y) + 1)));
+		BST_Node *target = Search(lastname + " " + firstname);
+		string phone_number = target->phone_number;
+		Remove(lastname + " " + firstname);
+		Insert(newlast + " " + newfirst + " " + address + " " + phone_number);
+		cout << "Update: " << firstname << " " << lastname << "'s new name is now " << firstname << " " << lastname << endl;
+		cout << "Update: " << newfirst << " " << newlast << "'s new address is now " << address << endl;
+	}
+	//option 3: Address and Phone Number fields changed
+	else if (option == char("3"))
+	{
+		string phone_number = s.substr((s.length() - 8), 8);
+		string address = s.substr(y + 1, (s.length() - 9 - (y + 1)));
+		Remove(lastname + " " + firstname);
+		Insert(lastname + " " + firstname + " " + address + " " + phone_number);
+		cout << "Update: " << firstname << " " << lastname << "'s new address is now " << address << endl;
+		cout << "Update: " << firstname << " " << lastname << "'s new phone number is now " << phone_number << endl;
+	}
+	//option 4: Name and phone number fields changed
+	else if (option == char("4"))
+	{
+		int z = s.find(" ", y + 1);
+		string newfirst = s.substr(y + 1, z - (y + 1));
+		int w = s.find(" ", z - y);
+		string newlast = s.substr(z - y, w - (z - y));
+		string phone_number = s.substr((s.length() - 8), 8);
+		BST_Node *target = Search(lastname + " " + firstname);
+		string address = target->address;
+		Remove(lastname + " " + firstname);
+		Insert(newlast + " " + newfirst + " " + address + " " + phone_number);
+		cout << "Update: " << firstname << " " << lastname << "'s new name is now " << firstname << " " << lastname << endl;
+		cout << "Update: " << newfirst << " " << newlast << "'s new phone number is now " << phone_number << endl;
+	}
+	//option 5: Name field changed
+	else if (option == char("5"))
+	{
+		int z = s.find(" ", y + 1);
+		string newfirst = s.substr(y + 1, z - (y + 1));
+		string newlast = s.substr(z - y, s.length() - (z - y));
+		BST_Node *target = Search(lastname + " " + firstname);
+		string address = target->address;
+		string phone_number = target->phone_number;
+		Remove(lastname + " " + firstname);
+		Insert(newlast + " " + newfirst + " " + address + " " + phone_number);
+		cout << "Update: " << firstname << " " << lastname << "'s new name is now " << firstname << " " << lastname << endl;
+	}
+	//option 6: Address field changed
+	else if (option == char("6"))
+	{
+		string address = s.substr(y+1, (s.length() - (y+1)));
+		BST_Node *target = Search(lastname + " " + firstname);
+		string phone_number = target->phone_number;
+		Remove(lastname + " " + firstname);
+		Insert(lastname + " " + firstname + " " + address + " " + phone_number);
+		cout << "Update: " << firstname << " " << lastname << "'s new address is now " << address << endl;
+	}
+	//option 7: Phone Number field changed
+	else if (option == char("7"))
+	{
+		string phone_number = s.substr((s.length() - 8), 8);
+		BST_Node *target = Search(lastname + " " + firstname);
+		string address = target->address;
+		Remove(lastname + " " + firstname);
+		Insert(lastname + " " + firstname + " " + address + " " + phone_number);
+		cout << "Update: " << firstname << " " << lastname << "'s new phone number is now " << phone_number << endl;
+	}
+	else
+	{
+		cerr << "Update string invalid. Please check your input and try again." << endl;
+	}
+}
+
+//print function
+void Clients_Info_BST::Print()
+{
+	print_tree_aux(root);
+}
+
+//iterative print function
+//precondition: Given node A
+//postcondition: Prints A and its children in infix notation
+void Clients_Info_BST::print_tree_aux(BST_Node * loc_ptr)
+{
+	if (loc_ptr != NULL)
+	{
+		string firstname = loc_ptr->firstname;
+		string lastname = loc_ptr->lastname;
+		string address = loc_ptr->address;
+		string phone = loc_ptr->phone_number;
+		print_tree_aux(loc_ptr->lchild);
+		cout << lastname << " " << firstname << " " << address << " " << phone << endl;
+		print_tree_aux(loc_ptr->rchild);
+	}
+}
+
+//print to file
+void Clients_Info_BST::PrintToFile(ofstream & a_file)
+{
+	PrintToFileIteratively(root, a_file);
+}
+
+//print to file in an iterative manner
+//precondition: Given node A
+//postcondition: Prints A and its children into a file in infix notation
+void Clients_Info_BST::PrintToFileIteratively(BST_Node *loc_ptr, ofstream & a_file)
+{
+	if (loc_ptr != NULL)
+	{
+		string firstname = loc_ptr->firstname;
+		string lastname = loc_ptr->lastname;
+		string address = loc_ptr->address;
+		string phone = loc_ptr->phone_number;
+		PrintToFileIteratively(loc_ptr->lchild, a_file);
+		a_file << lastname << " " << firstname << " " << address << " " << phone << endl;
+		PrintToFileIteratively(loc_ptr->rchild, a_file);
+	}
+}
+
+class Client_Address_Book
+
+{
+public:
+	Client_Address_Book();//default constructor will read data from input file "client_address_data.txt".
+	Client_Address_Book(const Client_Address_Book &);//Copy Constructor
+	~Client_Address_Book();//Destructor
+	void Insert(const string & s);// insert record
+	void Remove(const string & s);//remove record
+	void Update(const string & s);//update record
+	void Print_BST(const string & s);//print
+	void Print_Hash_Table();
+	void Print_Hash_Table_to_File(const string & filename);///function will print hash table to output file                                                                                                                                                                                
+	BST_Node * Search(const string & s);
+	//hash function
+	unsigned int Hash_Function(const string & s){ return int(s[0]) - 64; };
+
+	// Hint:  Remember that the insert, remove and search function for Clients_Address_Book will use //     
+	//Client_Info_BST’s insert, remove and search respectively.
+
+private:
+	int capacity;  //SET THIS VALUE EQUAL TO 27  YOUR DEFAULT CONSTRUCTOR
+	Clients_Info_BST   *hash_table[27]; // USING 1 THROUGH 26 or whatever you like
+};
+
+//default constructor
+//precondition: N/A
+//postcondition: Initializes new Address Book, a hash table with 27 BSTs, then reads the initial file and uses the BST insert function 
+//to add in all of them
+Client_Address_Book::Client_Address_Book()
+{
+	//open the file up
+	string inputFileName = "client_address_data.txt";
+	// open an input stream 
+	ifstream fin;                          //  to the input file,
+	fin.open(inputFileName);        //  establish a connection,
+	assert(fin.is_open());               //  and check for success
+	string reading;
+	capacity = 27;
+	for (int i = 1; i < capacity; i++)
+	{
+		hash_table[i] = new Clients_Info_BST;
+	}
+	while (!fin.eof())                               // loop:
+	{
+		getline(fin, reading);                    //  read a value from file
+		if (reading != "")
+		{
+			Insert(reading); //insert the string read into the TLIST
+		}
+	}
+	fin.close(); //close the file once we're done with it
+}
+
+//copy constructor
+//precondition: Given CAB A
+//postcondition: Creates CAB B, with all BSTs and entries equal to A (could also be utilized to resort the hash tables? I wonder...)
+Client_Address_Book::Client_Address_Book(const Client_Address_Book & ORG)
+{
+	for (int i = 1; i < 27; i++)
+	{
+		hash_table[i] = ORG.hash_table[i];
+		capacity = ORG.capacity;
+	}
+}
+
+//destructor
+//precondition: Given CAB A
+//postcondition: Deletes all hash BSTs related to A (can't use ordinary BST destructor because it needs to call functions, but I can make do)
+Client_Address_Book::~Client_Address_Book()
+{
+	for (int i = 1; i < 27; i++)
+	{
+		while (!hash_table[i]->empty())
+		{
+			string f = hash_table[i]->getroot()->firstname;
+			string l = hash_table[i]->getroot()->lastname;
+			Remove(l + " " + f);
+		}
+	}
+}
+
+//hash table insert
+//Note: All of these functions are basically just calling the related function of the BST related to the hash function
+void Client_Address_Book::Insert(const string & s)
+{
+	hash_table[Hash_Function(s)]->Insert(s);
+}
+
+//hash table remove
+void Client_Address_Book::Remove(const string & s)
+{
+	hash_table[Hash_Function(s)]->Remove(s);
+}
+
+//hash table update
+void Client_Address_Book::Update(const string & s)
+{
+	hash_table[Hash_Function(s)]->Update(s);
+}
+
+//hash table print specific BST
+void Client_Address_Book::Print_BST(const string & s)
+{
+	cout << "Printing all entries starting with " << s[0] << "...\n";
+	hash_table[Hash_Function(s)]->Print();
+}
+
+//hash table print everything
+void Client_Address_Book::Print_Hash_Table()
+{
+	cout << "Printing all entries...\n";
+	for (int i = 1; i < 27; i++)
+	{
+		hash_table[i]->Print();
+	}
+	cout << "All entries printed.\n";
+}
+
+//search hash table
+BST_Node * Client_Address_Book::Search(const string & s)
+{
+	return hash_table[Hash_Function(s)]->Search(s);
+}
+
+//print hash table to file
+//precondition: Given CAB A
+//postcondition: Prints all entries of hash table in order to a given file (calls by ofstream because doing so otherwise may result in
+//unintentionally closing the file before inserting what we wanted into it)
+void Client_Address_Book::Print_Hash_Table_to_File(const string & filename)
+{
+	ofstream a_file(filename);
+	cout << "Opening " << filename << "..." << endl;
+	assert(a_file.is_open());
+	for (int i = 1; i < capacity; i++)
+	{
+		hash_table[i]->PrintToFile(a_file);
+	}
+	cout << "All entires printed to " << filename << "." << endl;
+	a_file.close();
+}
+
+int main()
+
+{
+
+	Client_Address_Book My_Book;
+	My_Book.Insert("Bullard Lofton 777 Glades Road 207-2780");
+	My_Book.Remove("Bullard Lofton");
+	My_Book.Update("1 Bullard Lofton  Comb Harry 555 Palmetto Park Road 555-3444");
+	My_Book.Print_BST("B");
+	My_Book.Print_Hash_Table();
+	Client_Address_Book Your_Book = My_Book; //Invoke the copy constructor
+	Your_Book.Print_Hash_Table_to_File("output.txt");
+	return 0;
+}
